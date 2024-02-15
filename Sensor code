@@ -1,0 +1,39 @@
+# calculate the approximate distance moved, and record the time of movement.
+# pip install adafruit-circuitpython-adxl34x
+
+import time
+import board
+import busio
+import adafruit_adxl34x
+
+# Initialize I2C connection.
+i2c = busio.I2C(board.SCL, board.SDA)
+# Initialize the ADXL345 accelerometer.
+accelerometer = adafruit_adxl34x.ADXL345(i2c)
+
+def calculate_distance(acceleration, time_sec):
+   
+    # Assuming initial velocity is 0, distance = 0.5 * acceleration * (time^2)
+
+start_time = time.time()
+total_distance = 0
+
+try:
+    print("Recording dog's movement. Press Ctrl+C to stop.")
+    while True:
+        # Read acceleration data.
+        x, y, z = accelerometer.acceleration
+        # Calculate the magnitude of the acceleration vector.
+        acceleration_magnitude = (x**2 + y**2 + z**2) ** 0.5
+        # Record for a short interval (e.g., 1 second).
+        time.sleep(1)
+        # Calculate approximate distance moved in this interval.
+        interval_distance = calculate_distance(acceleration_magnitude, 1)
+        total_distance += interval_distance
+        # Update elapsed time.
+        elapsed_time = time.time() - start_time
+        print(f"Elapsed Time: {elapsed_time:.2f} s, Total Distance: {total_distance:.2f} meters (approx)")
+except KeyboardInterrupt:
+    # Calculate total time and distance when the loop is stopped.
+    total_time = time.time() - start_time
+    print(f"Recording stopped. Total Time: {total_time:.2f} s, Total Distance: {total_distance:.2f} meters (approx)")
