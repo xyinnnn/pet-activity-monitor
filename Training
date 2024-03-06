@@ -1,0 +1,16 @@
+# Pseudocode for collecting accelerometer data
+from Adafruit_ADXL345 import ADXL345
+
+# Initialize the accelerometer
+accelerometer = ADXL345()
+
+def collect_data(activity_label):
+    data = []
+    print(f"Collecting data for {activity_label}")
+    # Collect data for a certain period or until a user command stops the collection
+    while True:
+        x, y, z = accelerometer.read()
+        data.append((x, y, z))
+        # Break loop with a condition or user input
+    # Save data with label
+    save_data(data, activity_label)
