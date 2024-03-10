@@ -1,0 +1,79 @@
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Stepper.h>
+
+const char* ssid = "thisiswifi";
+const char* password = "jiubugaosuni";
+
+#define FIREBASE_HOST "https://pet-motion-monitor-default-rtdb.firebaseio.com/"
+#define FIREBASE_AUTH "admin.credential.cert(serviceAccount)"
+
+// Initialize display (for SSD1306)
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Stepper motor setup
+const int stepsPerRevolution = 200;  // adjust this to fit your stepper motor
+Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);
+
+void setup() {
+  Serial.begin(115200);
+
+  // Connect to WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected.");
+
+  // Connect to Firebase
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
+  Firebase.reconnectWiFi(true);
+
+  // Initialize display
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+
+  // Setup stepper motor
+  myStepper.setSpeed(60); // RPM
+}
+
+void loop() {
+  // Listen for updates in prediction data
+  if (Firebase.getString("https://pet-motion-monitor-default-rtdb.firebaseio.com/", prediction)) {  // Adjust path as necessary
+    displayPrediction(prediction);
+    performActionBasedOnPrediction(prediction);
+  } else {
+    // Handle error
+    Serial.println("Failed to read prediction from Firebase");
+  }
+  
+  delay(1000); // Adjust delay as needed
+}
+
+void displayPrediction(String prediction) {
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.println(prediction);
+  display.display();
+}
+
+void performActionBasedOnPrediction(String prediction) {
+  if(prediction == "walking") {
+    myStepper.step(stepsPerRevolution / 4); // 90 degrees
+  } else if(prediction == "running") {
+    myStepper.step(stepsPerRevolution / 2); // 180 degrees
+  }
+  // No action for "resting"
+}
