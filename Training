@@ -1,16 +1,34 @@
-# Pseudocode for collecting accelerometer data
-from Adafruit_ADXL345 import ADXL345
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+import firebase_admin
+from firebase_admin import credentials, db
 
-# Initialize the accelerometer
-accelerometer = ADXL345()
+cred = credentials.Certificate("path/to/serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+    'databaseURL': 'https://pet-motion-monitor-default-rtdb.firebaseio.com/'
+})
 
-def collect_data(activity_label):
-    data = []
-    print(f"Collecting data for {activity_label}")
-    # Collect data for a certain period or until a user command stops the collection
-    while True:
-        x, y, z = accelerometer.read()
-        data.append((x, y, z))
-        # Break loop with a condition or user input
-    # Save data with label
-    save_data(data, activity_label)
+ref = db.reference('/dog_movement/data')
+data = ref.get()
+df = pd.DataFrame(data)
+
+X = df[['x', 'y', 'z']] 
+y = df['activity']  
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+model = RandomForestClassifier(n_estimators=100)
+model.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+
+accuracy = accuracy_score(y_test, predictions)
+print("Model accuracy:", accuracy)
+
+new_data = [[0.1, 0.2, 9.8]]  
+prediction = model.predict(new_data)
+print("Prediction:", prediction)
+
+
