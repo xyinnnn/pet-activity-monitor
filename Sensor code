@@ -1,39 +1,45 @@
-# calculate the approximate distance moved, and record the time of movement.
-# pip install adafruit-circuitpython-adxl34x
+#include <Wire.h>
+#include <Adafruit_ADXL345_U.h>
+#include <FirebaseESP32.h>
+#include <WiFi.h>
 
-import time
-import board
-import busio
-import adafruit_adxl34x
+const char* ssid = "thisiswifi";
+const char* password = "jiubugaosuni";
 
-# Initialize I2C connection.
-i2c = busio.I2C(board.SCL, board.SDA)
-# Initialize the ADXL345 accelerometer.
-accelerometer = adafruit_adxl34x.ADXL345(i2c)
+#define FIREBASE_HOST "https://pet-motion-monitor-default-rtdb.firebaseio.com/"
+#define FIREBASE_AUTH "require("firebase-admin")"
 
-def calculate_distance(acceleration, time_sec):
-   
-    # Assuming initial velocity is 0, distance = 0.5 * acceleration * (time^2)
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
-start_time = time.time()
-total_distance = 0
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(thisiswifi, jiubugaosuni);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
+  if(!accel.begin()) {
+    Serial.println("No ADXL345 detected");
+    while(1);
+  }
+  accel.setRange(ADXL345_RANGE_16_G);
+}
 
-try:
-    print("Recording dog's movement. Press Ctrl+C to stop.")
-    while True:
-        # Read acceleration data.
-        x, y, z = accelerometer.acceleration
-        # Calculate the magnitude of the acceleration vector.
-        acceleration_magnitude = (x**2 + y**2 + z**2) ** 0.5
-        # Record for a short interval (e.g., 1 second).
-        time.sleep(1)
-        # Calculate approximate distance moved in this interval.
-        interval_distance = calculate_distance(acceleration_magnitude, 1)
-        total_distance += interval_distance
-        # Update elapsed time.
-        elapsed_time = time.time() - start_time
-        print(f"Elapsed Time: {elapsed_time:.2f} s, Total Distance: {total_distance:.2f} meters (approx)")
-except KeyboardInterrupt:
-    # Calculate total time and distance when the loop is stopped.
-    total_time = time.time() - start_time
-    print(f"Recording stopped. Total Time: {total_time:.2f} s, Total Distance: {total_distance:.2f} meters (approx)")
+void loop() {
+  sensors_event_t event;
+  accel.getEvent(&event);
+
+  
+  if (abs(event.acceleration.x) > 1 || abs(event.acceleration.y) > 1 || abs(event.acceleration.z) > 1) {
+    Serial.print("X: "); Serial.print(event.acceleration.x);
+    Serial.print(" Y: "); Serial.print(event.acceleration.y);
+    Serial.print(" Z: "); Serial.println(event.acceleration.z);
+
+    // Construct path and data to send
+    String path = "/dog_movement/data";
+    String message = String("{\"x\":") + event.acceleration.x + ",\"y\":" + event.acceleration.y + ",\"z\":" + event.acceleration.z + "}";
+    Firebase.pushJSON(path, message);
+  }
+  delay(100); // Adjust based on how frequently you want to read values
+}
